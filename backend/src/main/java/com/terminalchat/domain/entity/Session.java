@@ -1,0 +1,32 @@
+package com.terminalchat.domain.entity;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.LocalDateTime;
+
+@Document(collection = "sessions")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Session {
+    
+    @Id
+    private String id;
+    
+    private String userId;
+    private String sessionCode;
+    private String sessionType; // CHAT, VOICE, VIDEO
+    
+    private String roomId;
+    private String status; // ACTIVE, WAITING, COMPLETED, EXPIRED
+    
+    private LocalDateTime createdAt;
+    private LocalDateTime expiresAt;
+    private LocalDateTime completedAt;
+}
