@@ -22,6 +22,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        
+        // Skip filter for these paths
+        return path.startsWith("/ws/") || 
+               path.startsWith("/auth/") ||
+               path.startsWith("/rooms/");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
@@ -33,11 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String email = jwtTokenProvider.getEmailFromToken(token);
 
                 UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(
-                                userId, 
-                                null, 
-                                new ArrayList<>()
-                        );
+                    new UsernamePasswordAuthenticationToken(userId, null, new ArrayList<>());
                 authentication.setDetails(email);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

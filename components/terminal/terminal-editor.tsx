@@ -1,139 +1,218 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, useState } from 'react'
-import { TerminalTab } from '@/lib/terminal-store'
-import { useTerminalStore } from '@/lib/terminal-store'
-import { useAuthStore } from '@/lib/auth-store'
-import { Terminal } from './terminal-display'
-import { TerminalInput } from './terminal-input'
+import { useEffect, useRef, useState } from "react";
+import { TerminalTab } from "@/lib/terminal-store";
+import { useTerminalStore } from "@/lib/terminal-store";
+import { useAuthStore } from "@/lib/auth-store";
+import { Terminal } from "./terminal-display";
+import { TerminalInput } from "./terminal-input";
+import { WebSocketClient } from "@/lib/websocket-client";
 
 export function TerminalEditor({ tab }: { tab: TerminalTab }) {
-  const { addLine, setCommandInput, updateTab } = useTerminalStore()
-  const { user, token } = useAuthStore()
-  const [sessionCode, setSessionCode] = useState<string | null>(tab.sessionCode || null)
-  const [connectedMate, setConnectedMate] = useState<string | null>(tab.mateUsername || null)
-  const terminalRef = useRef<HTMLDivElement>(null)
+  const { addLine, setCommandInput, updateTab } = useTerminalStore();
+  const { user, token } = useAuthStore();
+  const terminalRef = useRef<HTMLDivElement>(null);
+
+  const [wsClient, setWsClient] = useState<WebSocketClient | null>(null);
+  const [subId, setSubId] = useState<string | null>(null);
+
+  const [socketReady, setSocketReady] = useState(false);
+  const pendingQueue = useRef<string[]>([]);
+
+  // Auto scroll
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [tab.history]);
 
   useEffect(() => {
-    // Auto-scroll to bottom
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+    if (!tab.roomId || wsClient) return;
+
+    const client = new WebSocketClient(
+      `${process.env.NEXT_PUBLIC_WS_URL}/chat`,
+      token!,
+    );
+
+    client.connect(
+      () => {
+        const id = client.subscribe(`/room/${tab.roomId}/messages`, (msg) => {
+          const data = JSON.parse(msg.body);
+
+          addLine(tab.id, {
+            id: `msg-${Date.now()}`,
+            content: data.content,
+            type: "message",
+            author: data.senderUsername,
+            timestamp: new Date(data.createdAt),
+          });
+        });
+
+        setSubId(id);
+
+        addLine(tab.id, {
+          id: `sys-${Date.now()}`,
+          content: `WebSocket connected. Room: ${tab.roomId}`,
+          type: "system",
+          timestamp: new Date(),
+        });
+      },
+      (err) => {
+        addLine(tab.id, {
+          id: `err-${Date.now()}`,
+          content: `WebSocket error: ${err}`,
+          type: "error",
+          timestamp: new Date(),
+        });
+      },
+    );
+
+    setWsClient(client);
+
+    return () => {
+      if (subId) client.unsubscribe(subId);
+      client.disconnect();
+    };
+  }, [tab.roomId]);
+
+  const sendChat = (text: string) => {
+    if (!wsClient || !tab.roomId) return;
+
+    if (!wsClient.isReady()) {
+      pendingQueue.current.push(text);
+      addLine(tab.id, {
+        id: `sys-${Date.now()}`,
+        content: "Connecting... message queued",
+        type: "system",
+        timestamp: new Date(),
+      });
+      return;
     }
-  }, [tab.history])
+
+    wsClient.send(`/app/chat/send/${tab.roomId}`, {
+      senderId: user!.id,
+      senderUsername: user!.displayName,
+      content: text,
+    });
+  };
 
   const handleCommand = async (input: string) => {
-    if (!input.trim()) return
+    if (!input.trim()) return;
 
-    // Add user's command to history
+    const command = input.trim();
+    const lower = command.toLowerCase();
+
     addLine(tab.id, {
-      id: `line-${Date.now()}`,
+      id: `cmd-${Date.now()}`,
       content: `${tab.username} : ${tab.type} > ${input}`,
-      type: 'prompt',
-      author: tab.username,
+      type: "prompt",
       timestamp: new Date(),
-    })
+    });
 
-    const command = input.toLowerCase().trim()
+    // ===== SYSTEM =====
+    if (lower === "my-address") {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/rooms/my-address/${tab.type}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
-    // Parse and execute command
-    if (command === 'my-address') {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/rooms/my-address/${tab.type}`,
-          {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        )
-        const data = await response.json()
-        const code = data.sessionCode
-
+      if (!res.ok) {
+        const text = await res.text();
         addLine(tab.id, {
-          id: `line-${Date.now()}`,
-          content: `Server generated code: ${code}`,
-          type: 'system',
+          id: `err-${Date.now()}`,
+          content: `my-address failed: ${text || res.status}`,
+          type: "error",
           timestamp: new Date(),
-        })
-
-        setSessionCode(code)
-        updateTab(tab.id, { sessionCode: code, sessionId: data.sessionId })
-      } catch (error) {
-        addLine(tab.id, {
-          id: `line-${Date.now()}`,
-          content: `Error: Failed to generate address`,
-          type: 'error',
-          timestamp: new Date(),
-        })
+        });
+        return;
       }
-    } else if (command.startsWith('connect-mate ')) {
-      const mateCode = command.substring('connect-mate '.length)
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/rooms/connect/${mateCode}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              sessionType: tab.type,
-              mySessionId: tab.sessionId,
-            }),
-          }
-        )
 
-        if (response.ok) {
-          const data = await response.json()
-          addLine(tab.id, {
-            id: `line-${Date.now()}`,
-            content: `Connected! RoomID: ${data.roomId}`,
-            type: 'system',
-            timestamp: new Date(),
-          })
-          setConnectedMate('Mate')
-          updateTab(tab.id, { roomId: data.roomId, mateUsername: 'Mate' })
-        } else {
-          addLine(tab.id, {
-            id: `line-${Date.now()}`,
-            content: `Error: Invalid or expired code`,
-            type: 'error',
-            timestamp: new Date(),
-          })
-        }
-      } catch (error) {
+      const data = await res.json();
+
+      addLine(tab.id, {
+        id: `sys-${Date.now()}`,
+        content: `Your code: ${data.sessionCode}`,
+        type: "system",
+        timestamp: new Date(),
+      });
+
+      updateTab(tab.id, {
+        sessionCode: data.sessionCode,
+        sessionId: data.sessionId,
+      });
+    } else if (lower.startsWith("connect-mate ")) {
+      const mateCode = command
+        .substring("connect-mate ".length)
+        .trim()
+        .toUpperCase();
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/rooms/connect/${mateCode}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionType: tab.type,
+            mySessionId: tab.sessionId,
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        const text = await res.text();
         addLine(tab.id, {
-          id: `line-${Date.now()}`,
-          content: `Error: Connection failed`,
-          type: 'error',
+          id: `err-${Date.now()}`,
+          content: `Connection failed: ${text || "Invalid code or session not ready"}`,
+          type: "error",
           timestamp: new Date(),
-        })
+        });
+        return;
       }
-    } else if (command === 'help') {
+
+      const data = await res.json();
+
+      updateTab(tab.id, { roomId: data.roomId, mateUsername: "Mate" });
+
       addLine(tab.id, {
-        id: `line-${Date.now()}`,
-        content: `Available commands:\n  my-address          - Get your session code\n  connect-mate <code> - Connect with peer's code\n  exit-${tab.type}       - Close this session`,
-        type: 'system',
+        id: `sys-${Date.now()}`,
+        content: `Connected. Room: ${data.roomId}`,
+        type: "system",
         timestamp: new Date(),
-      })
-    } else if (command === `exit-${tab.type}`) {
+      });
+    } else if (command === "help") {
       addLine(tab.id, {
-        id: `line-${Date.now()}`,
-        content: `Session closed.`,
-        type: 'system',
+        id: `help-${Date.now()}`,
+        content: `Commands:
+my-address
+connect-mate <code>
+Type any text after pairing to chat`,
+        type: "system",
         timestamp: new Date(),
-      })
-    } else {
-      addLine(tab.id, {
-        id: `line-${Date.now()}`,
-        content: `Unknown command. Type 'help' for commands.`,
-        type: 'error',
-        timestamp: new Date(),
-      })
+      });
     }
 
-    setCommandInput(tab.id, '')
-  }
+    // ===== CHAT MODE =====
+    else {
+      if (!tab.roomId) {
+        addLine(tab.id, {
+          id: `err-${Date.now()}`,
+          content: `Not connected. Use my-address and connect-mate first.`,
+          type: "error",
+          timestamp: new Date(),
+        });
+      } else {
+        sendChat(input);
+      }
+    }
+
+    setCommandInput(tab.id, "");
+  };
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -142,5 +221,5 @@ export function TerminalEditor({ tab }: { tab: TerminalTab }) {
         <TerminalInput tab={tab} onCommand={handleCommand} />
       </div>
     </div>
-  )
+  );
 }

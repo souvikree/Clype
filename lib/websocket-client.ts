@@ -1,68 +1,75 @@
 import SockJS from 'sockjs-client'
-import { Client, IMessage } from '@stomp/stompjs'
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs'
 
 export class WebSocketClient {
-  private client: Client | null = null
-  private url: string
-  private token: string
+  private client: Client
+  private connected = false
+  private subscriptions = new Map<string, StompSubscription>()
 
-  constructor(url: string, token: string) {
-    this.url = url
-    this.token = token
-  }
-
-  connect(onConnect: () => void, onError: (error: any) => void): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.client = new Client({
-        brokerURL: this.url,
-        connectHeaders: {
-          Authorization: `Bearer ${this.token}`,
-        },
-        debug: (str: string) => console.log('[WebSocket]', str),
-        reconnectDelay: 5000,
-        heartbeatIncoming: 4000,
-        heartbeatOutgoing: 4000,
-        onConnect: () => {
-          onConnect()
-          resolve()
-        },
-        onStompError: (frame: any) => {
-          console.error('[WebSocket Error]', frame)
-          onError(frame)
-          reject(frame)
-        },
-      })
-
-      this.client.activate()
+  constructor(private url: string, private token: string) {
+    this.client = new Client({
+      webSocketFactory: () => new SockJS(this.url),
+      connectHeaders: {
+        Authorization: `Bearer ${this.token}`,
+      },
+      debug: (str) => console.log('[STOMP]', str),
+      reconnectDelay: 3000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
     })
   }
 
-  subscribe(destination: string, callback: (message: IMessage) => void): string {
-    if (!this.client) throw new Error('WebSocket not connected')
-    return this.client.subscribe(destination, callback).id
+  connect(onReady: () => void, onError: (e: any) => void) {
+    if (this.client.active) return
+
+    this.client.onConnect = () => {
+      this.connected = true
+      console.log('STOMP CONNECTED')
+      onReady()
+    }
+
+    this.client.onStompError = (frame) => {
+      this.connected = false
+      console.error('STOMP ERROR', frame)
+      onError(frame)
+    }
+
+    this.client.onWebSocketClose = () => {
+      this.connected = false
+      console.warn('STOMP DISCONNECTED')
+    }
+
+    this.client.activate()
   }
 
-  unsubscribe(subscriptionId: string): void {
-    if (!this.client) return
-    this.client.unsubscribe(subscriptionId)
+  isReady() {
+    return this.connected
   }
 
-  send(destination: string, body: any): void {
-    if (!this.client) throw new Error('WebSocket not connected')
-    this.client.publish({
-      destination,
-      body: JSON.stringify(body),
-    })
+  subscribe(dest: string, cb: (m: IMessage) => void): string {
+    if (!this.connected) throw new Error('STOMP not connected')
+    const sub = this.client.subscribe(dest, cb)
+    this.subscriptions.set(sub.id, sub)
+    return sub.id
   }
 
-  disconnect(): void {
-    if (this.client) {
-      this.client.deactivate()
-      this.client = null
+  unsubscribe(id: string) {
+    const sub = this.subscriptions.get(id)
+    if (sub) {
+      sub.unsubscribe()
+      this.subscriptions.delete(id)
     }
   }
 
-  isConnected(): boolean {
-    return this.client?.connected || false
+  send(dest: string, body: any) {
+    if (!this.connected) throw new Error('STOMP not ready')
+    this.client.publish({ destination: dest, body: JSON.stringify(body) })
+  }
+
+  disconnect() {
+    this.subscriptions.forEach(s => s.unsubscribe())
+    this.subscriptions.clear()
+    this.client.deactivate()
+    this.connected = false
   }
 }

@@ -28,6 +28,7 @@ public class RoomController {
     public ResponseEntity<?> generateMyAddress(
             @RequestHeader("Authorization") String token,
             @PathVariable String sessionType) {
+
         try {
             String userId = extractUserIdFromToken(token);
             if (userId == null) {
@@ -36,9 +37,10 @@ public class RoomController {
 
             SessionCodeResponse response = sessionService.createSession(userId, sessionType);
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
             log.error("Failed to generate address", e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(500).body(e.getMessage()); // IMPORTANT
         }
     }
 
@@ -47,6 +49,7 @@ public class RoomController {
             @RequestHeader("Authorization") String token,
             @PathVariable String mateCode,
             @RequestBody Map<String, String> request) {
+
         try {
             String userId = extractUserIdFromToken(token);
             if (userId == null) {
@@ -56,31 +59,41 @@ public class RoomController {
             String sessionType = request.get("sessionType");
             String mySessionId = request.get("mySessionId");
 
-            // Find mate's session by code
-            Optional<Session> mateSession = sessionService.getSessionByCode(mateCode);
-            if (mateSession.isEmpty()) {
+            if (mySessionId == null || mySessionId.isBlank()) {
+                return ResponseEntity.badRequest().body("Run my-address first in this window");
+            }
+
+            Optional<Session> mateOpt = sessionService.getSessionByCode(mateCode);
+            if (mateOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body("Mate session not found");
             }
 
-            Session mate = mateSession.get();
+            Session mate = mateOpt.get();
 
-            // Create room
+            // Case 1: Mate already connected → just join their room
+            if ("ACTIVE".equals(mate.getStatus()) && mate.getRoomId() != null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("roomId", mate.getRoomId());
+                response.put("status", "JOINED_EXISTING");
+                return ResponseEntity.ok(response);
+            }
+
+            // Case 2: First connector → create room
             Room room = roomService.createRoom(sessionType, userId, mate.getUserId());
 
-            // Associate sessions with room
             sessionService.associateSessionWithRoom(mySessionId, room.getId());
             sessionService.associateSessionWithRoom(mate.getId(), room.getId());
 
             Map<String, Object> response = new HashMap<>();
             response.put("roomId", room.getId());
-            response.put("status", "CONNECTED");
-            response.put("mateUserId", mate.getUserId());
+            response.put("status", "CREATED");
 
             log.info("Room created between {} and {}", userId, mate.getUserId());
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
             log.error("Failed to connect with mate", e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(500).body("Internal error");
         }
     }
 

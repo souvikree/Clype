@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "main": "electron/main.js",
-
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -12,7 +11,6 @@
     "start": "next start",
     "dist": "electron-builder"
   },
-
   "build": {
     "appId": "com.clype.app",
     "productName": "Clype",
@@ -80,6 +78,7 @@
     "react-hook-form": "^7.71.1",
     "react-resizable-panels": "^2.1.9",
     "recharts": "^2.15.4",
+    "socket-client": "^1.0.0",
     "sockjs-client": "^1.6.1",
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.4.0",
@@ -94,6 +93,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sockjs-client": "^1.5.4",
     "concurrently": "^9.2.1",
     "electron": "^40.0.0",
     "electron-builder": "^26.4.0",
