@@ -3,6 +3,7 @@ package com.terminalchat.web;
 import com.terminalchat.domain.dto.SessionCodeResponse;
 import com.terminalchat.domain.entity.Room;
 import com.terminalchat.domain.entity.Session;
+import com.terminalchat.security.JwtTokenProvider;  // 🔥 ADD THIS
 import com.terminalchat.service.RoomService;
 import com.terminalchat.service.SessionService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class RoomController {
 
     private final RoomService roomService;
     private final SessionService sessionService;
+    private final JwtTokenProvider jwtTokenProvider;  // 🔥 ADD THIS
 
     @PostMapping("/my-address/{sessionType}")
     public ResponseEntity<?> generateMyAddress(
@@ -40,7 +42,7 @@ public class RoomController {
 
         } catch (Exception e) {
             log.error("Failed to generate address", e);
-            return ResponseEntity.status(500).body(e.getMessage()); // IMPORTANT
+            return ResponseEntity.status(500).body(e.getMessage());
         }
     }
 
@@ -70,11 +72,15 @@ public class RoomController {
 
             Session mate = mateOpt.get();
 
-            // Case 1: Mate already connected → just join their room
+            // Case 1: Mate already connected → join their room
             if ("ACTIVE".equals(mate.getStatus()) && mate.getRoomId() != null) {
+                sessionService.associateSessionWithRoom(mySessionId, mate.getRoomId());
+                
                 Map<String, Object> response = new HashMap<>();
                 response.put("roomId", mate.getRoomId());
                 response.put("status", "JOINED_EXISTING");
+                
+                log.info("User {} joined existing room {} with mate {}", userId, mate.getRoomId(), mate.getUserId());
                 return ResponseEntity.ok(response);
             }
 
@@ -88,7 +94,7 @@ public class RoomController {
             response.put("roomId", room.getId());
             response.put("status", "CREATED");
 
-            log.info("Room created between {} and {}", userId, mate.getUserId());
+            log.info("Room {} created between {} and {}", room.getId(), userId, mate.getUserId());
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
@@ -146,9 +152,11 @@ public class RoomController {
         }
     }
 
+    // 🔥 FIX THIS METHOD
     private String extractUserIdFromToken(String token) {
         if (token != null && token.startsWith("Bearer ")) {
-            return token.substring(7);
+            String jwt = token.substring(7);
+            return jwtTokenProvider.getUserIdFromToken(jwt);  // 🔥 USE JWT PROVIDER
         }
         return null;
     }

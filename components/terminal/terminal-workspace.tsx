@@ -7,6 +7,7 @@ import { TerminalTabBar } from './terminal-tab-bar'
 import { TerminalEditor } from './terminal-editor'
 import { Button } from '@/components/ui/button'
 import { useRef, useEffect } from 'react'
+import { CallManager } from '../calls/call-manager'
 
 export function TerminalWorkspace() {
   const router = useRouter()
@@ -32,6 +33,7 @@ export function TerminalWorkspace() {
   return (
     <div className="h-screen w-screen bg-background text-foreground flex flex-col">
       {/* Header */}
+      <CallManager />
       <div className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold font-mono bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           &gt; Clype

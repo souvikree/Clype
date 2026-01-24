@@ -24,11 +24,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        
-        // Skip filter for these paths
-        return path.startsWith("/ws/") || 
-               path.startsWith("/auth/") ||
-               path.startsWith("/rooms/");
+        return path.contains("/api/ws")
+                || path.startsWith("/auth/")
+                || path.startsWith("/rooms/");
     }
 
     @Override
@@ -42,8 +40,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String userId = jwtTokenProvider.getUserIdFromToken(token);
                 String email = jwtTokenProvider.getEmailFromToken(token);
 
-                UsernamePasswordAuthenticationToken authentication = 
-                    new UsernamePasswordAuthenticationToken(userId, null, new ArrayList<>());
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userId,
+                        null, new ArrayList<>());
                 authentication.setDetails(email);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

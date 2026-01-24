@@ -483,7 +483,7 @@ ERROR: Exceptions, failed operations
 ### Frontend Logging
 
 ```
-console.log("[v0] ...") for debugging
+console.log("[Clype] ...") for debugging
 Error boundaries for React errors
 WebSocket event logging
 ```

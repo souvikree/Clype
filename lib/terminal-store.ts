@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { WebRTCClient } from './webrtc-client'
 
 export interface TerminalTab {
   id: string
@@ -21,10 +22,21 @@ export interface TerminalLine {
   timestamp: Date
 }
 
+export interface CallState {
+  active: boolean
+  type: 'voice' | 'video' | null
+  roomId?: string
+  peerName?: string
+  isIncoming?: boolean
+  webrtcPeer?: WebRTCClient  // 🔥 Store the actual peer connection
+}
+
 export interface TerminalStore {
   tabs: TerminalTab[]
   activeTabId: string | null
   username: string
+  call: CallState
+
   setUsername: (username: string) => void
   addTab: (type: 'chat' | 'voice' | 'video') => void
   removeTab: (id: string) => void
@@ -33,6 +45,10 @@ export interface TerminalStore {
   setCommandInput: (tabId: string, input: string) => void
   updateTab: (id: string, updates: Partial<TerminalTab>) => void
   clearTabs: () => void
+
+  startCall: (type: 'voice' | 'video', roomId: string, peerName: string, peer: WebRTCClient) => void
+  receiveCall: (type: 'voice' | 'video', roomId: string, peerName: string, peer: WebRTCClient) => void
+  endCall: () => void
 }
 
 let tabCounter = 0
@@ -41,10 +57,14 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   tabs: [],
   activeTabId: null,
   username: '',
+  call: {
+    active: false,
+    type: null,
+  },
 
   setUsername: (username: string) => set({ username }),
 
-  addTab: (type: 'chat' | 'voice' | 'video') => {
+  addTab: (type) => {
     const { tabs, username } = get()
     const newTab: TerminalTab = {
       id: `tab-${++tabCounter}`,
@@ -62,18 +82,16 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       commandInput: '',
     }
 
-    // Deactivate other tabs
     const updatedTabs = tabs.map((tab) => ({ ...tab, isActive: false }))
     updatedTabs.push(newTab)
 
     set({ tabs: updatedTabs, activeTabId: newTab.id })
   },
 
-  removeTab: (id: string) => {
+  removeTab: (id) => {
     const { tabs } = get()
     const updatedTabs = tabs.filter((tab) => tab.id !== id)
 
-    // Set next active tab or first one
     let newActiveId = null
     if (updatedTabs.length > 0) {
       newActiveId = updatedTabs[0].id
@@ -83,7 +101,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     set({ tabs: updatedTabs, activeTabId: newActiveId })
   },
 
-  setActiveTab: (id: string) => {
+  setActiveTab: (id) => {
     const { tabs } = get()
     const updatedTabs = tabs.map((tab) => ({
       ...tab,
@@ -92,7 +110,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     set({ tabs: updatedTabs, activeTabId: id })
   },
 
-  addLine: (tabId: string, line: TerminalLine) => {
+  addLine: (tabId, line) => {
     const { tabs } = get()
     const updatedTabs = tabs.map((tab) => {
       if (tab.id === tabId) {
@@ -106,7 +124,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     set({ tabs: updatedTabs })
   },
 
-  setCommandInput: (tabId: string, input: string) => {
+  setCommandInput: (tabId, input) => {
     const { tabs } = get()
     const updatedTabs = tabs.map((tab) => {
       if (tab.id === tabId) {
@@ -117,7 +135,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     set({ tabs: updatedTabs })
   },
 
-  updateTab: (id: string, updates: Partial<TerminalTab>) => {
+  updateTab: (id, updates) => {
     const { tabs } = get()
     const updatedTabs = tabs.map((tab) => (tab.id === id ? { ...tab, ...updates } : tab))
     set({ tabs: updatedTabs })
@@ -125,5 +143,46 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   clearTabs: () => {
     set({ tabs: [], activeTabId: null })
+  },
+
+  // 🔥 Outgoing call
+  startCall: (type, roomId, peerName, peer) =>
+    set({
+      call: {
+        active: true,
+        type,
+        roomId,
+        peerName,
+        isIncoming: false,
+        webrtcPeer: peer,
+      },
+    }),
+
+  // 🔥 Incoming call
+  receiveCall: (type, roomId, peerName, peer) =>
+    set({
+      call: {
+        active: true,
+        type,
+        roomId,
+        peerName,
+        isIncoming: true,
+        webrtcPeer: peer,
+      },
+    }),
+
+  endCall: () => {
+    const { call } = get()
+    call.webrtcPeer?.close()
+    set({
+      call: {
+        active: false,
+        type: null,
+        roomId: undefined,
+        peerName: undefined,
+        isIncoming: undefined,
+        webrtcPeer: undefined,
+      },
+    })
   },
 }))

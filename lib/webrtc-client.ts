@@ -1,105 +1,83 @@
 export class WebRTCClient {
-  private peerConnection: RTCPeerConnection | null = null
-  private localStream: MediaStream | null = null
-  private remoteStream: MediaStream | null = null
+  private pc!: RTCPeerConnection
+  private localStream!: MediaStream
+  private remoteStream = new MediaStream()
+  private iceQueue: RTCIceCandidateInit[] = []
+  private onIce!: (c: RTCIceCandidateInit) => void
+  private onRemoteTrack?: (stream: MediaStream) => void  
 
   private iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
   ]
 
-  constructor() {}
+  async init(
+    onIce: (c: RTCIceCandidateInit) => void,
+    onRemoteTrack?: (stream: MediaStream) => void  
+  ) {
+    this.onIce = onIce
+    this.onRemoteTrack = onRemoteTrack
+    this.pc = new RTCPeerConnection({ iceServers: this.iceServers })
 
-  async initializePeerConnection(): Promise<RTCPeerConnection> {
-    this.peerConnection = new RTCPeerConnection({
-      iceServers: this.iceServers,
-    })
-
-    this.peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        console.log('[WebRTC] ICE Candidate:', event.candidate)
-      }
+    this.pc.onicecandidate = e => {
+      if (e.candidate) this.onIce(e.candidate.toJSON())
     }
 
-    this.peerConnection.ontrack = (event) => {
-      console.log('[WebRTC] Remote track received:', event.track.kind)
-      if (!this.remoteStream) {
-        this.remoteStream = new MediaStream()
-      }
-      this.remoteStream.addTrack(event.track)
+    this.pc.ontrack = e => {
+      console.log('🎥 Remote track received:', e.track.kind)
+      this.remoteStream.addTrack(e.track)
+      this.onRemoteTrack?.(this.remoteStream)  
     }
 
-    return this.peerConnection
+    return this.pc
   }
 
-  async getLocalStream(options: { audio?: boolean; video?: boolean } = {}): Promise<MediaStream> {
-    const { audio = true, video = true } = options
-
-    this.localStream = await navigator.mediaDevices.getUserMedia({
-      audio,
-      video: video ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
-    })
-
-    if (this.peerConnection && this.localStream) {
-      this.localStream.getTracks().forEach((track) => {
-        this.peerConnection?.addTrack(track, this.localStream!)
-      })
-    }
-
+  async openMedia(audio: boolean, video: boolean) {
+    this.localStream = await navigator.mediaDevices.getUserMedia({ audio, video })
+    this.localStream.getTracks().forEach(t => this.pc.addTrack(t, this.localStream))
     return this.localStream
   }
 
-  async createOffer(): Promise<RTCSessionDescriptionInit> {
-    if (!this.peerConnection) throw new Error('Peer connection not initialized')
-
-    const offer = await this.peerConnection.createOffer()
-    await this.peerConnection.setLocalDescription(offer)
+  async createOffer() {
+    const offer = await this.pc.createOffer()
+    await this.pc.setLocalDescription(offer)
     return offer
   }
 
-  async createAnswer(): Promise<RTCSessionDescriptionInit> {
-    if (!this.peerConnection) throw new Error('Peer connection not initialized')
-
-    const answer = await this.peerConnection.createAnswer()
-    await this.peerConnection.setLocalDescription(answer)
+  async createAnswer() {
+    const answer = await this.pc.createAnswer()
+    await this.pc.setLocalDescription(answer)
     return answer
   }
 
-  async setRemoteDescription(description: RTCSessionDescriptionInit): Promise<void> {
-    if (!this.peerConnection) throw new Error('Peer connection not initialized')
-    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(description))
+  async setRemote(desc: RTCSessionDescriptionInit) {
+    await this.pc.setRemoteDescription(new RTCSessionDescription(desc))
+    this.iceQueue.forEach(c => this.pc.addIceCandidate(new RTCIceCandidate(c)))
+    this.iceQueue = []
   }
 
-  async addIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
-    if (!this.peerConnection) throw new Error('Peer connection not initialized')
-    if (candidate.candidate) {
-      await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+  async addIce(c: RTCIceCandidateInit) {
+    if (this.pc.remoteDescription) {
+      await this.pc.addIceCandidate(new RTCIceCandidate(c))
+    } else {
+      this.iceQueue.push(c)
     }
   }
 
-  getLocalStream_(): MediaStream | null {
+  getSignalingState() {
+    return this.pc.signalingState
+  }
+  
+  getLocalStream() {
     return this.localStream
   }
 
-  getRemoteStream(): MediaStream | null {
+  getRemoteStream() {
     return this.remoteStream
   }
 
-  closeConnection(): void {
-    if (this.localStream) {
-      this.localStream.getTracks().forEach((track) => track.stop())
-      this.localStream = null
-    }
-
-    if (this.peerConnection) {
-      this.peerConnection.close()
-      this.peerConnection = null
-    }
-
-    this.remoteStream = null
-  }
-
-  getPeerConnection(): RTCPeerConnection | null {
-    return this.peerConnection
+  close() {
+    this.localStream?.getTracks().forEach(t => t.stop())
+    this.pc.close()
   }
 }
