@@ -102,12 +102,19 @@ export function TerminalEditor({ tab }: { tab: TerminalTab }) {
     const command = input.trim();
     const lower = command.toLowerCase();
 
-    addLine(tab.id, {
-      id: `cmd-${Date.now()}`,
-      content: `${tab.username} : ${tab.type} > ${input}`,
-      type: "prompt",
-      timestamp: new Date(),
-    });
+    const isSystemCommand =
+      lower === "my-address" ||
+      lower.startsWith("connect-mate ") ||
+      lower === "help";
+
+    if (isSystemCommand) {
+      addLine(tab.id, {
+        id: `cmd-${Date.now()}`,
+        content: `${tab.username} : ${tab.type} > ${input}`,
+        type: "prompt",
+        timestamp: new Date(),
+      });
+    }
 
     // ===== SYSTEM =====
     if (lower === "my-address") {

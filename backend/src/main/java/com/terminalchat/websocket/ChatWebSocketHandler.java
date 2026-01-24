@@ -30,36 +30,28 @@ public class ChatWebSocketHandler {
     public void handleChatMessage(
             @DestinationVariable String roomId,
             @Payload Map<String, String> payload) {
-        
+
         String senderId = payload.get("senderId");
         String senderUsername = payload.get("senderUsername");
         String content = payload.get("content");
 
-        // Validate room participant
-        if (!roomService.validateRoomParticipants(roomId, senderId)) {
-            log.warn("Unauthorized message attempt in room {}", roomId);
-            return;
-        }
-
-        // Save message with TTL
+        // TEMP: Skip validation until identity is unified
         var messageDTO = messageService.saveMessage(roomId, senderId, senderUsername, content);
 
-        // Broadcast to room
         messagingTemplate.convertAndSend("/room/" + roomId + "/messages", messageDTO);
-        log.info("Message sent in room {}", roomId);
+        log.info("Message broadcast in room {}", roomId);
     }
 
     @MessageMapping("/chat/typing/{roomId}")
     public void handleTypingIndicator(
             @DestinationVariable String roomId,
             @Payload Map<String, String> payload) {
-        
-        String userId = payload.get("userId");
-        
+
         Map<String, Object> typingEvent = new HashMap<>();
-        typingEvent.put("userId", userId);
+        typingEvent.put("userId", payload.get("userId"));
         typingEvent.put("isTyping", true);
 
         messagingTemplate.convertAndSend("/room/" + roomId + "/typing", typingEvent);
     }
+
 }
