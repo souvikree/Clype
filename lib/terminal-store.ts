@@ -28,7 +28,8 @@ export interface CallState {
   roomId?: string
   peerName?: string
   isIncoming?: boolean
-  webrtcPeer?: WebRTCClient  // 🔥 Store the actual peer connection
+  webrtcPeer?: WebRTCClient
+  tabId?: string  // 🔥 NEW: Track which tab owns this call
 }
 
 export interface TerminalStore {
@@ -46,8 +47,8 @@ export interface TerminalStore {
   updateTab: (id: string, updates: Partial<TerminalTab>) => void
   clearTabs: () => void
 
-  startCall: (type: 'voice' | 'video', roomId: string, peerName: string, peer: WebRTCClient) => void
-  receiveCall: (type: 'voice' | 'video', roomId: string, peerName: string, peer: WebRTCClient) => void
+  startCall: (type: 'voice' | 'video', roomId: string, peerName: string, peer: WebRTCClient, tabId: string) => void
+  receiveCall: (type: 'voice' | 'video', roomId: string, peerName: string, peer: WebRTCClient, tabId: string) => void
   endCall: () => void
 }
 
@@ -89,7 +90,13 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   },
 
   removeTab: (id) => {
-    const { tabs } = get()
+    const { tabs, call } = get()
+    
+    // 🔥 If closing tab with active call, end the call
+    if (call.active && call.tabId === id) {
+      get().endCall()
+    }
+    
     const updatedTabs = tabs.filter((tab) => tab.id !== id)
 
     let newActiveId = null
@@ -146,7 +153,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   },
 
   // 🔥 Outgoing call
-  startCall: (type, roomId, peerName, peer) =>
+  startCall: (type, roomId, peerName, peer, tabId) =>
     set({
       call: {
         active: true,
@@ -155,11 +162,12 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
         peerName,
         isIncoming: false,
         webrtcPeer: peer,
+        tabId,
       },
     }),
 
   // 🔥 Incoming call
-  receiveCall: (type, roomId, peerName, peer) =>
+  receiveCall: (type, roomId, peerName, peer, tabId) =>
     set({
       call: {
         active: true,
@@ -168,6 +176,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
         peerName,
         isIncoming: true,
         webrtcPeer: peer,
+        tabId,
       },
     }),
 
@@ -182,6 +191,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
         peerName: undefined,
         isIncoming: undefined,
         webrtcPeer: undefined,
+        tabId: undefined,
       },
     })
   },

@@ -15,7 +15,7 @@ export function TerminalEditor({ tab }: { tab: TerminalTab }) {
   const terminalRef = useRef<HTMLDivElement>(null);
 
   const [wsClient, setWsClient] = useState<WebSocketClient | null>(null);
-  const rtcRef = useRef<WebRTCClient | null>(null);
+  const rtcMap = useRef<Map<string, WebRTCClient>>(new Map());
   const signalingRef = useRef<WebSocketClient | null>(null);
 
   // Auto scroll
@@ -65,7 +65,7 @@ export function TerminalEditor({ tab }: { tab: TerminalTab }) {
     );
 
     setWsClient(client);
-    return () => client.disconnect();
+    // return () => client.disconnect();
   }, [tab.roomId, token, user]);
 
   // ================= SIGNALING SOCKET =================
@@ -98,14 +98,14 @@ useEffect(() => {
         timestamp: new Date(),
       });
 
-      // 🔥 Incoming Offer
+      // Incoming Offer
       signaling.subscribe(`/room/${roomId}/webrtc-offer`, async (m) => {
         const { sdpOffer, callType } = JSON.parse(m.body);
 
-        if (rtcRef.current) return; // 🔒 glare protection
+        if (rtcMap.current.has(tab.id)) return; 
 
         const rtc = new WebRTCClient();
-        rtcRef.current = rtc;
+        rtcMap.current.set(tab.id, rtc);
 
         await rtc.init((c) => {
           signaling.send(`/app/signaling/ice-candidate/${roomId}`, {
@@ -123,16 +123,16 @@ useEffect(() => {
           sdpAnswer: answer,
         });
 
-        receiveCall(callType, roomId, tab.mateUsername || "Mate", rtc);
+        receiveCall(callType, roomId, tab.mateUsername || "Mate", rtc, tab.id);
       });
 
-      // 🔥 Incoming Answer
+      // Incoming Answer
       signaling.subscribe(`/room/${roomId}/webrtc-answer`, async (m) => {
         const { sdpAnswer } = JSON.parse(m.body);
 
-        const pc = rtcRef.current;
+        const pc = rtcMap.current.get(tab.id);
         if (!pc) return;
-        if (pc.getSignalingState() !== "have-local-offer") return; // 🔒 state check
+        if (pc.getSignalingState() !== "have-local-offer") return; 
 
         await pc.setRemote(sdpAnswer);
 
@@ -144,11 +144,12 @@ useEffect(() => {
         });
       });
 
-      // 🔥 ICE Candidates
+      // ICE Candidates
       signaling.subscribe(`/room/${roomId}/ice-candidate`, async (m) => {
         const { candidate } = JSON.parse(m.body);
-        if (rtcRef.current && candidate) {
-          await rtcRef.current.addIce(candidate);
+        const pc = rtcMap.current.get(tab.id);
+        if (pc && candidate) {
+          await pc.addIce(candidate);
         }
       });
     }, (err) => {
@@ -163,10 +164,10 @@ useEffect(() => {
 
     signalingRef.current = signaling;
 
-    return () => {
-      signaling.disconnect();
-      signalingRef.current = null;
-    };
+    // return () => {
+    //   signaling.disconnect();
+    //   signalingRef.current = null;
+    // };
   }, [tab.roomId, tab.type, token, user]);
 
   // ================= COMMAND HANDLER =================
@@ -271,7 +272,7 @@ useEffect(() => {
       return;
     }
 
-    // 🔥 START CALL
+    // START CALL
     if (lower === "call" && (tab.type === "voice" || tab.type === "video")) {
       const roomId = tab.roomId;
       if (!roomId) {
@@ -300,7 +301,7 @@ useEffect(() => {
       console.log("📞 Starting call...");
 
       const rtc = new WebRTCClient();
-      rtcRef.current = rtc;
+      rtcMap.current.set(tab.id, rtc);
 
       await rtc.init(
         (c) => {
@@ -330,7 +331,7 @@ useEffect(() => {
       });
 
       console.log("🎬 Starting call UI");
-      startCall(callType, roomId, tab.mateUsername || "Mate", rtc);
+      startCall(callType, roomId, tab.mateUsername || "Mate", rtc, tab.id);
       return;
     }
 

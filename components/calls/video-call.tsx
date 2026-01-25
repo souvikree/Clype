@@ -22,20 +22,20 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
   useEffect(() => {
     if (!call.webrtcPeer) return;
 
-    // 🔥 Attach local stream
+    //local stream
     const localStream = call.webrtcPeer.getLocalStream();
     if (localStream && localVideoRef.current) {
       localVideoRef.current.srcObject = localStream;
     }
 
-    // 🔥 Attach remote stream
+    // remote stream
     const remoteStream = call.webrtcPeer.getRemoteStream();
     if (remoteStream && remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = remoteStream;
       setRemoteConnected(true);
     }
 
-    // 🔥 Poll for remote stream
+    
     const interval = setInterval(() => {
       const stream = call.webrtcPeer!.getRemoteStream();
       if (stream && stream.getTracks().length > 0) {

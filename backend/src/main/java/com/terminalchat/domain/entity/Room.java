@@ -22,7 +22,7 @@ public class Room {
     private String id;
     
     private String roomType; // CHAT, VOICE, VIDEO
-    private String status; // ACTIVE, CLOSED, EXPIRED
+    private String status; 
     
     @Builder.Default
     private List<String> participantIds = new ArrayList<>();

@@ -24,7 +24,7 @@ public class RoomController {
 
     private final RoomService roomService;
     private final SessionService sessionService;
-    private final JwtTokenProvider jwtTokenProvider;  // 🔥 ADD THIS
+    private final JwtTokenProvider jwtTokenProvider;  
 
     @PostMapping("/my-address/{sessionType}")
     public ResponseEntity<?> generateMyAddress(
@@ -152,11 +152,11 @@ public class RoomController {
         }
     }
 
-    // 🔥 FIX THIS METHOD
+    
     private String extractUserIdFromToken(String token) {
         if (token != null && token.startsWith("Bearer ")) {
             String jwt = token.substring(7);
-            return jwtTokenProvider.getUserIdFromToken(jwt);  // 🔥 USE JWT PROVIDER
+            return jwtTokenProvider.getUserIdFromToken(jwt); 
         }
         return null;
     }

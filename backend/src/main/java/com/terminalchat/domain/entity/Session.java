@@ -24,7 +24,7 @@ public class Session {
     private String sessionType; // CHAT, VOICE, VIDEO
     
     private String roomId;
-    private String status; // ACTIVE, WAITING, COMPLETED, EXPIRED
+    private String status; 
     
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;

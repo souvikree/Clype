@@ -13,7 +13,7 @@ public class SessionCleanupScheduler {
 
     private final PairingService pairingService;
 
-    @Scheduled(fixedRate = 300000) // Run every 5 minutes
+    @Scheduled(fixedRate = 300000) 
     public void cleanupExpiredSessions() {
         try {
             log.info("Running session cleanup task...");
@@ -24,7 +24,7 @@ public class SessionCleanupScheduler {
         }
     }
 
-    @Scheduled(fixedRate = 300000) // Run every 5 minutes
+    @Scheduled(fixedRate = 300000)
     public void cleanupExpiredRooms() {
         try {
             log.info("Running room cleanup task...");

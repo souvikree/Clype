@@ -27,5 +27,5 @@ public class Message {
     private String type; // TEXT, SYSTEM
     
     private LocalDateTime createdAt;
-    private LocalDateTime expiresAt; // TTL field - MongoDB will auto-delete
+    private LocalDateTime expiresAt; 
 }

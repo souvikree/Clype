@@ -21,20 +21,19 @@ export function VoiceCall({ mateId, mateName, onCallEnd }: VoiceCallProps) {
   useEffect(() => {
     if (!call.webrtcPeer) return;
 
-    // 🔥 Attach local stream
     const localStream = call.webrtcPeer.getLocalStream();
     if (localStream && localAudioRef.current) {
       localAudioRef.current.srcObject = localStream;
     }
 
-    // 🔥 Attach remote stream
+    
     const remoteStream = call.webrtcPeer.getRemoteStream();
     if (remoteStream && remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = remoteStream;
       setRemoteConnected(true);
     }
 
-    // 🔥 Poll for remote stream (in case it arrives late)
+    
     const interval = setInterval(() => {
       const stream = call.webrtcPeer!.getRemoteStream();
       if (stream && stream.getTracks().length > 0) {

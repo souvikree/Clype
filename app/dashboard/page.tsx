@@ -40,7 +40,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-background flex flex-col items-center justify-center p-4">
-      {/* Header with logout */}
+     
       <div className="absolute top-4 right-4">
         <Button
           variant="outline"
