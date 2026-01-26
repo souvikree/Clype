@@ -74,13 +74,14 @@ useEffect(() => {
   if (!roomId || (tab.type !== "voice" && tab.type !== "video")) return;
   if (signalingRef.current) return;
 
-    console.log("🔌 Connecting to signaling socket for room:", roomId);
+    console.log("Connecting to signaling socket for room:", roomId);
 
     addLine(tab.id, {
       id: `sys-${Date.now()}`,
-      content: `🔌 Connecting to signaling server...`,
+      content: `Connecting to signaling server...`,
       type: "system",
       timestamp: new Date(),
+      icon: "info",
     });
 
     const signaling = new WebSocketClient(
@@ -89,13 +90,14 @@ useEffect(() => {
     );
 
     signaling.connect(() => {
-      console.log("✅ Signaling socket connected");
+      console.log("Signaling socket connected");
 
       addLine(tab.id, {
         id: `sys-${Date.now()}`,
-        content: `✅ Signaling ready. Type 'call' to start ${tab.type} call.`,
+        content: `Signaling ready. Type 'call' to start ${tab.type} call.`,
         type: "system",
         timestamp: new Date(),
+        icon: "signal",
       });
 
       // Incoming Offer
@@ -138,9 +140,10 @@ useEffect(() => {
 
         addLine(tab.id, {
           id: `sys-${Date.now()}`,
-          content: `✅ Call connected!`,
+          content: ` Call connected!`,
           type: "system",
           timestamp: new Date(),
+          icon: "success",
         });
       });
 
@@ -153,12 +156,13 @@ useEffect(() => {
         }
       });
     }, (err) => {
-      console.error("❌ Signaling error:", err);
+      console.error("Signaling error:", err);
       addLine(tab.id, {
         id: `err-${Date.now()}`,
-        content: `❌ Signaling failed. Check connection.`,
+        content: `Signaling failed. Check connection.`,
         type: "error",
         timestamp: new Date(),
+        icon: "error",
       });
     });
 
@@ -325,9 +329,10 @@ useEffect(() => {
 
       addLine(tab.id, {
         id: `call-${Date.now()}`,
-        content: "📞 Calling...",
+        content: "Calling...",
         type: "system",
         timestamp: new Date(),
+        icon: "call",
       });
 
       console.log("🎬 Starting call UI");

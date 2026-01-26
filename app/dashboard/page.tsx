@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/auth-store'
 import { useTerminalStore } from '@/lib/terminal-store'
 import { Button } from '@/components/ui/button'
+import { MessageSquare, Mic, Video, Lock, Zap, Gamepad2 } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -58,21 +59,21 @@ export default function DashboardPage() {
           <div className="text-center space-y-6">
             <div>
               <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent mb-2">
-                Clype
+                {">"} Clype
               </h1>
-              <p className="text-muted-foreground text-lg">
+              <p className="text-muted-foreground text-lg font-mono tracking-wide">
                 Command-driven, privacy-first communication
               </p>
             </div>
 
             <div className="bg-background border border-border rounded p-4">
-              <p className="text-sm text-muted-foreground mb-2">Logged in as:</p>
-              <p className="text-foreground font-mono font-semibold">{user.email}</p>
+              <p className="text-sm text-muted-foreground font-mono tracking-wide mb-2">Logged in as:</p>
+              <p className="text-foreground font-mono font-semibold tracking-wide">{user.email}</p>
             </div>
 
             <div className="space-y-3">
               <label className="block">
-                <span className="text-sm text-muted-foreground mb-2 block">
+                <span className="text-sm text-muted-foreground font-mono tracking-wide mb-2 block">
                   Your Display Name
                 </span>
                 <input
@@ -87,16 +88,28 @@ export default function DashboardPage() {
               <Button
                 onClick={handleStart}
                 size="lg"
-                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground font-semibold py-6"
+                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 
+text-primary-foreground font-mono font-bold tracking-widest uppercase py-6
+shadow-[0_0_30px_hsl(var(--primary)/0.5)]"
               >
                 Start Terminal Workspace
               </Button>
             </div>
 
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>💬 Create new chat tabs with code-based pairing</p>
-              <p>🎙️ Launch voice calls with peer-to-peer encryption</p>
-              <p>📹 Start video sessions with full privacy</p>
+            {/* Feature Lines */}
+            <div className="text-xs text-muted-foreground space-y-2 font-mono tracking-wide">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-primary" />
+                <span>Create new chat tabs with code-based pairing</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mic className="w-4 h-4 text-accent" />
+                <span>Launch voice calls with peer-to-peer encryption</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Video className="w-4 h-4 text-secondary" />
+                <span>Start video sessions with full privacy</span>
+              </div>
             </div>
           </div>
         </div>
@@ -104,19 +117,22 @@ export default function DashboardPage() {
         {/* Info Section */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { icon: '🔐', title: 'Private', desc: 'No tracking, no logs' },
-            { icon: '⚡', title: 'Fast', desc: 'P2P encrypted' },
-            { icon: '🎮', title: 'Built for Gamers', desc: 'Made for power users' },
-          ].map((item, i) => (
-            <div
-              key={i}
-              className="bg-card/50 border border-border/50 rounded p-4 text-center hover:border-primary/50 transition"
-            >
-              <div className="text-2xl mb-2">{item.icon}</div>
-              <h3 className="font-semibold text-foreground text-sm">{item.title}</h3>
-              <p className="text-xs text-muted-foreground">{item.desc}</p>
-            </div>
-          ))}
+            { icon: Lock, title: 'Private', desc: 'No tracking, no logs' },
+            { icon: Zap, title: 'Fast', desc: 'P2P encrypted' },
+            { icon: Gamepad2, title: 'Built for Gamers', desc: 'Made for power users' },
+          ].map((item, i) => {
+            const Icon = item.icon
+            return (
+              <div
+                key={i}
+                className="bg-card/50 border border-border/50 rounded p-4 text-center hover:border-primary/50 transition"
+              >
+                <Icon className="w-6 h-6 mx-auto mb-2 text-primary" />
+                <h3 className="font-mono font-bold tracking-wider uppercase text-foreground text-sm">{item.title}</h3>
+                <p className="text-xs text-muted-foreground font-mono tracking-wide">{item.desc}</p>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

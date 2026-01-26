@@ -39,7 +39,6 @@ export function QuickCallPanel({ mateName = 'Mate', onVoiceCall, onVideoCall }: 
         <div className="p-4 min-w-72">
           <h3 className="text-sm font-semibold text-foreground mb-3">Quick Call</h3>
 
-          
           <input
             type="text"
             value={inputName}
