@@ -9,19 +9,37 @@ import { MessageSquare, Mic, Video, Lock, Zap, Gamepad2 } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, isAuthenticated, logout } = useAuthStore()
-  const { setUsername, addTab } = useTerminalStore()
+  const { user, isAuthenticated, logout, hasHydrated } = useAuthStore()
+  const { setUsername } = useTerminalStore()
   const [displayNameInput, setDisplayNameInput] = useState('')
-  const [showUsernameModal, setShowUsernameModal] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-    } else if (user?.displayName) {
-      setDisplayNameInput(user.displayName)
-      setUsername(user.displayName)
-    }
-  }, [isAuthenticated, user, router, setUsername])
+    console.log('📊 Dashboard mounted')
+    console.log('📊 Initial auth:', { isAuthenticated, user })
+    if (!hasHydrated) return
+    // CRITICAL: Increase delay to 800ms to ensure localStorage is loaded
+    // This is especially important for OAuth deep-link flow where
+    // the auth state is set just before navigation
+    const checkAuth = setTimeout(() => {
+      console.log('📊 Auth check after delay:', { isAuthenticated, user })
+
+      if (!isAuthenticated) {
+        console.log('⚠️ Not authenticated, redirecting to /login')
+        router.replace('/login')
+      } else {
+        console.log('✅ User authenticated')
+        setIsCheckingAuth(false)
+        
+        if (user?.displayName) {
+          setDisplayNameInput(user.displayName)
+          setUsername(user.displayName)
+        }
+      }
+    }, 800) // Increased from 200ms to 800ms
+
+    return () => clearTimeout(checkAuth)
+  }, [isAuthenticated, user, router, setUsername, hasHydrated])
 
   const handleStart = () => {
     if (displayNameInput.trim()) {
@@ -31,12 +49,25 @@ export default function DashboardPage() {
   }
 
   const handleLogout = () => {
+    console.log('🔐 Logging out...')
     logout()
-    router.push('/login')
+    router.replace('/login')
+  }
+
+  // Show loading state while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground font-mono">Loading dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isAuthenticated || !user) {
-    return null
+    return null // Will redirect
   }
 
   return (
@@ -88,9 +119,7 @@ export default function DashboardPage() {
               <Button
                 onClick={handleStart}
                 size="lg"
-                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 
-text-primary-foreground font-mono font-bold tracking-widest uppercase py-6
-shadow-[0_0_30px_hsl(var(--primary)/0.5)]"
+                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 text-primary-foreground font-mono font-bold tracking-widest uppercase py-6 shadow-[0_0_30px_hsl(var(--primary)/0.5)]"
               >
                 Start Terminal Workspace
               </Button>

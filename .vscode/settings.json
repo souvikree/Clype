@@ -1,8 +1,22 @@
 {
     "cSpell.words": [
+        "appimage",
+        "Bootstrapper",
+        "cdylib",
+        "clippy",
         "clype",
+        "codegen",
+        "contex",
+        "libwebkit",
+        "mediastream",
+        "msvc",
+        "nsis",
+        "serde",
         "springframework",
+        "tauri",
         "terminalchat",
+        "unmaximize",
+        "Vaapi",
         "webrtc"
     ]
 }
