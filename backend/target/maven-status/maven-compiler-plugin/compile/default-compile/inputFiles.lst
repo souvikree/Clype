@@ -18,6 +18,7 @@ C:\Users\swoos\Clype-Chat\backend\src\main\java\com\terminalchat\domain\entity\U
 C:\Users\swoos\Clype-Chat\backend\src\main\java\com\terminalchat\scheduler\SessionCleanupScheduler.java
 C:\Users\swoos\Clype-Chat\backend\src\main\java\com\terminalchat\config\WebSocketConfig.java
 C:\Users\swoos\Clype-Chat\backend\src\main\java\com\terminalchat\domain\dto\MessageDTO.java
+C:\Users\swoos\Clype-Chat\backend\src\main\java\com\terminalchat\web\HealthController.java
 C:\Users\swoos\Clype-Chat\backend\src\main\java\com\terminalchat\service\RoomService.java
 C:\Users\swoos\Clype-Chat\backend\src\main\java\com\terminalchat\TerminalChatBackendApplication.java
 C:\Users\swoos\Clype-Chat\backend\src\main\java\com\terminalchat\domain\repository\RoomRepository.java

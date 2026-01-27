@@ -14,9 +14,15 @@ export function TerminalInput({
 }) {
   const { setCommandInput } = useTerminalStore()
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      onCommand(tab.commandInput)
+      const cmd = tab.commandInput.trim()
+      if (!cmd) return
+
+      onCommand(cmd)
+
+      // Clear input like a real terminal
+      setCommandInput(tab.id, "")
     }
   }
 

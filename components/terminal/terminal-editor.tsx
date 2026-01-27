@@ -102,6 +102,7 @@ useEffect(() => {
 
       // Incoming Offer
       signaling.subscribe(`/room/${roomId}/webrtc-offer`, async (m) => {
+        console.log("🔔 INCOMING OFFER RECEIVED!", m.body);
         const { sdpOffer, callType } = JSON.parse(m.body);
 
         if (rtcMap.current.has(tab.id)) return; 
@@ -124,7 +125,8 @@ useEffect(() => {
           senderId: user!.id,
           sdpAnswer: answer,
         });
-
+        
+        console.log("📞 CALLING receiveCall() to show UI...");
         receiveCall(callType, roomId, tab.mateUsername || "Mate", rtc, tab.id);
       });
 

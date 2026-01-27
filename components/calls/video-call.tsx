@@ -73,35 +73,54 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
 
     // Setup LOCAL stream
     const setupLocalStream = () => {
-      const localStream = call.webrtcPeer!.getLocalStream()
+      const localStream = call.webrtcPeer!.getLocalStream();
       if (localStream && localVideoRef.current) {
-        const video = localVideoRef.current
+        const video = localVideoRef.current;
 
+        // Only update if different stream
         if (video.srcObject !== localStream) {
-          video.srcObject = localStream
+          console.log("📹 Setting local stream", localStream.getTracks());
+          video.srcObject = localStream;
         }
 
-        video.muted = true
-        video.playsInline = true
-        video.autoplay = true
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true;
+
+        // Force play
+        video.play().catch((err) => {
+          console.error("Local video play failed:", err);
+        });
       }
-    }
+    };
 
     // Setup REMOTE stream
     const setupRemoteStream = () => {
-      const remoteStream = call.webrtcPeer!.getRemoteStream()
-      if (remoteStream && remoteStream.getTracks().length > 0 && remoteVideoRef.current) {
-        const video = remoteVideoRef.current
+      const remoteStream = call.webrtcPeer!.getRemoteStream();
+      if (
+        remoteStream &&
+        remoteStream.getTracks().length > 0 &&
+        remoteVideoRef.current
+      ) {
+        const video = remoteVideoRef.current;
 
+        // Only update if different stream
         if (video.srcObject !== remoteStream) {
-          video.srcObject = remoteStream
+          console.log("📹 Setting remote stream", remoteStream.getTracks());
+          video.srcObject = remoteStream;
         }
 
-        video.playsInline = true
-        video.autoplay = true
-        setRemoteConnected(true)
+        video.playsInline = true;
+        video.autoplay = true;
+
+        // Force play
+        video.play().catch((err) => {
+          console.error("Remote video play failed:", err);
+        });
+
+        setRemoteConnected(true);
       }
-    }
+    };
 
     // Setup immediately
     setupLocalStream();
@@ -126,14 +145,18 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
     const interval = setInterval(async () => {
       if (!webrtcPeerRef.current) return;
 
-      const lat = await webrtcPeerRef.current.getLatency();
-      setLatency(lat);
+      try {
+        const lat = await webrtcPeerRef.current.getLatency();
+        setLatency(lat);
 
-      const br = await webrtcPeerRef.current.getBitrate();
-      setBitrate(br);
+        const br = await webrtcPeerRef.current.getBitrate();
+        setBitrate(br);
 
-      const f = await webrtcPeerRef.current.getFPS();
-      setFps(f);
+        const f = await webrtcPeerRef.current.getFPS();
+        setFps(f);
+      } catch (err) {
+        console.error("Metrics update failed:", err);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
@@ -245,6 +268,7 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
       dragControls={dragControls}
       dragMomentum={false}
       dragElastic={0}
+      dragListener={false} // CRITICAL: Disable default drag, use title bar only
       onDragEnd={(e, info) => {
         updatePosition(`video-${mateId}`, {
           x: windowState.position.x + info.offset.x,
@@ -265,9 +289,13 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.8, opacity: 0 }}
     >
-      {/* Title Bar */}
+      {/* Title Bar - ONLY this should trigger window drag */}
       <div
-        onPointerDown={(e) => !isMaximized && dragControls.start(e)}
+        onPointerDown={(e) => {
+          if (!isMaximized) {
+            dragControls.start(e);
+          }
+        }}
         className="bg-gradient-to-r from-cyan-900/80 to-blue-900/80 backdrop-blur-sm px-4 py-2 flex items-center justify-between cursor-move border-b border-cyan-400/30"
       >
         <div className="flex items-center gap-2 font-mono text-sm">
@@ -352,17 +380,29 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
           </div>
         </div>
 
-        {/* CRITICAL FIX: Draggable PiP - ONLY video, no stats */}
+        {/* CRITICAL FIX: Draggable PiP - ISOLATED from main window drag */}
         <Draggable
           nodeRef={pipRef}
           position={pipPosition}
-          onDrag={(e, data) => setPipPosition({ x: data.x, y: data.y })}
+          onDrag={(e, data) => {
+            // CRITICAL: Stop propagation to prevent main window drag
+            e.stopPropagation();
+            setPipPosition({ x: data.x, y: data.y });
+          }}
           bounds="parent"
         >
           <div
             ref={pipRef}
-            className="absolute top-20 right-4 cursor-move z-20"
-            style={{ pointerEvents: 'auto' }}
+            className="absolute top-20 right-4 z-20"
+            style={{ 
+              pointerEvents: 'auto',
+              cursor: 'move',
+              touchAction: 'none' // CRITICAL: Prevent touch conflicts
+            }}
+            onPointerDown={(e) => {
+              // CRITICAL: Stop propagation to window drag
+              e.stopPropagation();
+            }}
           >
             <div className="glass border-2 border-cyan-400/50 rounded-lg overflow-hidden shadow-2xl">
               {/* PiP Video */}
@@ -398,7 +438,7 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
 
         {/* Connection Status */}
         {!remoteConnected && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 pointer-events-none">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -419,10 +459,11 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
               onClick={toggleMute}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className={`p-4 rounded-full transition-all ${isMuted
-                ? "bg-red-600 shadow-lg shadow-red-500/50"
-                : "bg-white/10 hover:bg-white/20 backdrop-blur-sm"
-                }`}
+              className={`p-4 rounded-full transition-all ${
+                isMuted
+                  ? "bg-red-600 shadow-lg shadow-red-500/50"
+                  : "bg-white/10 hover:bg-white/20 backdrop-blur-sm"
+              }`}
               aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
             >
               {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -434,10 +475,11 @@ export function VideoCall({ mateId, mateName, onCallEnd }: VideoCallProps) {
               onClick={toggleVideo}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className={`p-4 rounded-full transition-all ${!isVideoOn
-                ? "bg-red-600 shadow-lg shadow-red-500/50"
-                : "bg-white/10 hover:bg-white/20 backdrop-blur-sm"
-                }`}
+              className={`p-4 rounded-full transition-all ${
+                !isVideoOn
+                  ? "bg-red-600 shadow-lg shadow-red-500/50"
+                  : "bg-white/10 hover:bg-white/20 backdrop-blur-sm"
+              }`}
               aria-label={isVideoOn ? "Turn off camera" : "Turn on camera"}
             >
               {isVideoOn ? <Video size={24} /> : <VideoOff size={24} />}
