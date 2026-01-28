@@ -36,11 +36,10 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: false, // ✅ This is fine
       hasHydrated: false,
       setHasHydrated: (v: boolean) => set({ hasHydrated: v }),
 
-      // CRITICAL: Direct setters for OAuth deep-link flow
       setUser: (user: User | null) => {
         console.log("🔐 setUser called:", user);
         set({
@@ -132,6 +131,8 @@ export const useAuthStore = create<AuthStore>()(
       name: "auth-store",
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
+        // ✅ ADD THIS: Always reset loading state on hydration
+        state?.setIsLoading(false);
       },
     },
   ),

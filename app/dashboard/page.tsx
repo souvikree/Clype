@@ -16,30 +16,30 @@ export default function DashboardPage() {
 
   useEffect(() => {
     console.log('📊 Dashboard mounted')
-    console.log('📊 Initial auth:', { isAuthenticated, user })
-    if (!hasHydrated) return
-    // CRITICAL: Increase delay to 800ms to ensure localStorage is loaded
-    // This is especially important for OAuth deep-link flow where
-    // the auth state is set just before navigation
-    const checkAuth = setTimeout(() => {
-      console.log('📊 Auth check after delay:', { isAuthenticated, user })
+    console.log('📊 Initial auth:', { isAuthenticated, user, hasHydrated })
+    
+    // CRITICAL: Wait for Zustand to hydrate before making auth decisions
+    if (!hasHydrated) {
+      console.log('⏳ Waiting for store to hydrate...')
+      return
+    }
 
-      if (!isAuthenticated) {
-        console.log('⚠️ Not authenticated, redirecting to /login')
-        router.replace('/login')
-      } else {
-        console.log('✅ User authenticated')
-        setIsCheckingAuth(false)
-        
-        if (user?.displayName) {
-          setDisplayNameInput(user.displayName)
-          setUsername(user.displayName)
-        }
-      }
-    }, 800) // Increased from 200ms to 800ms
+    // CRITICAL: Check auth ONLY after hydration is complete
+    if (!isAuthenticated || !user) {
+      console.log('⚠️ Not authenticated after hydration, redirecting to /login')
+      router.replace('/login')
+      return
+    }
 
-    return () => clearTimeout(checkAuth)
-  }, [isAuthenticated, user, router, setUsername, hasHydrated])
+    // User is authenticated
+    console.log('✅ User authenticated:', user.email)
+    setIsCheckingAuth(false)
+    
+    if (user.displayName) {
+      setDisplayNameInput(user.displayName)
+      setUsername(user.displayName)
+    }
+  }, [isAuthenticated, user, hasHydrated, router, setUsername])
 
   const handleStart = () => {
     if (displayNameInput.trim()) {
@@ -54,13 +54,15 @@ export default function DashboardPage() {
     router.replace('/login')
   }
 
-  // Show loading state while checking auth
-  if (isCheckingAuth) {
+  // Show loading state while checking auth or waiting for hydration
+  if (!hasHydrated || isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground font-mono">Loading dashboard...</p>
+          <p className="text-muted-foreground font-mono">
+            {!hasHydrated ? 'Initializing...' : 'Loading dashboard...'}
+          </p>
         </div>
       </div>
     )

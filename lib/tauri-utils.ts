@@ -63,10 +63,7 @@ export const getApiUrl = () => {
   // Use environment variable or default
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 };
-// export const getDesktopApiUrl = () => {
-//   // Use environment variable or default
-//   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-// };
+
 
 export const getWebSocketUrl = () => {
   const apiUrl = getApiUrl();
