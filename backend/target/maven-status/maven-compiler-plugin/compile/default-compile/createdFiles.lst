@@ -10,6 +10,7 @@ com\terminalchat\service\RoomService.class
 com\terminalchat\web\AuthController.class
 com\terminalchat\config\SecurityConfig.class
 com\terminalchat\domain\dto\SessionCodeResponse$SessionCodeResponseBuilder.class
+com\terminalchat\web\HealthController.class
 com\terminalchat\domain\repository\UserRepository.class
 com\terminalchat\service\AuthService.class
 com\terminalchat\domain\dto\AuthResponse$AuthResponseBuilder.class
