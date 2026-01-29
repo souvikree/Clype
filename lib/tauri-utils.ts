@@ -61,7 +61,7 @@ export const showNotification = async (title: string, body: string) => {
 
 export const getApiUrl = () => {
   // Use environment variable or default
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+  return process.env.NEXT_PUBLIC_API_URL || 'http://13.127.127.109:8080/api';
 };
 
 
