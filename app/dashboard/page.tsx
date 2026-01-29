@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const handleStart = () => {
     if (displayNameInput.trim()) {
       setUsername(displayNameInput)
-      router.push('/workspace')
+      router.replace('/workspace')
     }
   }
 

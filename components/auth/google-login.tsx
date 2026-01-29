@@ -137,7 +137,7 @@ export function GoogleLoginComponent() {
               })
               setToken(data.token)
 
-              router.push('/dashboard')
+              router.replace('/dashboard')
             } catch (error) {
               console.error('Web login error:', error)
             }

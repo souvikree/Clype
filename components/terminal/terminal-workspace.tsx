@@ -67,7 +67,7 @@ export function TerminalWorkspace() {
   const handleClose = () => {
     clearTabs();
     logout();
-    router.push("/login");
+    router.replace("/login");
   };
 
   return (
