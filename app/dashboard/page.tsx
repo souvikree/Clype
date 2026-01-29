@@ -17,7 +17,7 @@ export default function DashboardPage() {
   useEffect(() => {
     console.log('📊 Dashboard mounted')
     console.log('📊 Initial auth:', { isAuthenticated, user, hasHydrated })
-    
+
     // CRITICAL: Wait for Zustand to hydrate before making auth decisions
     if (!hasHydrated) {
       console.log('⏳ Waiting for store to hydrate...')
@@ -34,7 +34,7 @@ export default function DashboardPage() {
     // User is authenticated
     console.log('✅ User authenticated:', user.email)
     setIsCheckingAuth(false)
-    
+
     if (user.displayName) {
       setDisplayNameInput(user.displayName)
       setUsername(user.displayName)
@@ -74,7 +74,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-background flex flex-col items-center justify-center p-4">
-     
+
       <div className="absolute top-4 right-4">
         <Button
           variant="outline"
@@ -92,7 +92,8 @@ export default function DashboardPage() {
           <div className="text-center space-y-6">
             <div>
               <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent mb-2">
-                {">"} Clype
+                <span className="text-6xl mr-2 mt-2">{">"}</span>
+                Clype
               </h1>
               <p className="text-muted-foreground text-lg font-mono tracking-wide">
                 Command-driven, privacy-first communication
