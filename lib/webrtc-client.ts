@@ -1,3 +1,5 @@
+import { getIceServers } from "./ice-servers";
+
 export class WebRTCClient {
   private pc!: RTCPeerConnection;
   private localStream!: MediaStream;
@@ -9,34 +11,7 @@ export class WebRTCClient {
   private analyser?: AnalyserNode;
   private dataArray?: Uint8Array;
 
-  // ENHANCED: Added more STUN servers + TURN servers for better connectivity
-  private iceServers = [
-    // Your existing STUN servers
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-
-    // ADDED: More STUN servers for redundancy
-    { urls: "stun:stun4.l.google.com:19302" },
-
-    // ADDED: FREE TURN servers for firewall/NAT traversal
-    {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-  ];
+  private iceServers: RTCIceServer[] = getIceServers();
 
   async init(
     onIce: (c: RTCIceCandidateInit) => void,
@@ -44,16 +19,17 @@ export class WebRTCClient {
   ) {
     this.onIce = onIce;
     this.onRemoteTrack = onRemoteTrack;
-
+    console.log("🧊 ICE servers:", getIceServers());
     // ENHANCED: Better RTC configuration
     this.pc = new RTCPeerConnection({
-      iceServers: this.iceServers,
+      iceServers: getIceServers(),
 
-      // ADDED: Improved configuration for stability
-      iceCandidatePoolSize: 10, // Pre-gather candidates (faster connection)
-      bundlePolicy: "max-bundle", // Use single connection (lower latency)
-      rtcpMuxPolicy: "require", // Multiplexing for better performance
-      iceTransportPolicy: "all", // Use both STUN and TURN
+      iceCandidatePoolSize: 10,
+      bundlePolicy: "max-bundle",
+      rtcpMuxPolicy: "require",
+
+      // IMPORTANT
+      iceTransportPolicy: "all", // change to "relay" ONLY for debugging
     });
 
     this.pc.addEventListener("track", () => {
@@ -100,6 +76,14 @@ export class WebRTCClient {
     // ADDED: ICE connection monitoring
     this.pc.oniceconnectionstatechange = () => {
       console.log("🧊 ICE state:", this.pc.iceConnectionState);
+
+      if (this.pc.iceConnectionState === "failed") {
+        console.error("❌ ICE failed — TURN not reachable or blocked");
+      }
+
+      if (this.pc.iceConnectionState === "connected") {
+        console.log("✅ ICE connected — media path established");
+      }
     };
 
     return this.pc;
